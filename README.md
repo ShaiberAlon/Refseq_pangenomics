@@ -17,6 +17,6 @@ There were 107 results. To create a list of ftp addresses for download I used:
   
 I then used:
 
-  ``for file in `cat BfragRefseqAssembliesFTP.txt`;do wget --recursive --no-host-directories --cut-dirs=2 $file/``
+  ``for file in `cat BfragRefseqAssembliesFTP.txt`;do wget --recursive --no-host-directories --cut-dirs=2 $file/; done``
   
 After downloading all genomes I went throught the Pan-genome workflow.
