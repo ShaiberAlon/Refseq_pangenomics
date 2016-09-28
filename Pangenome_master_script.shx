@@ -1,0 +1,138 @@
+#!/bin/bash
+
+# expects input of samples.txt file
+# generate contigs.db for each fasta file
+
+# setting the pipeline to stop in case a command returns a non-zero status
+set -e
+
+job=$1
+email=$2
+
+FASTA_DIR="01_FASTA"
+
+if [ ! -f "samples.txt"  ]
+then
+    echo "
+        You must have a samples.txt in this directory. The format of the
+        samples.txt is identical to the input file of iu-gen-configs. For
+        details, see iu-gen-congigs -h
+        "
+    exit 1
+fi
+
+LOG () {
+    msg="[`date`] $1"
+    echo $msg >> $job-log.txt
+    echo $msg | mail -s "Update on $job" $email
+}
+
+DO_INIT() {
+    rm -rf 00_LOGS
+    mkdir 00_LOGS
+
+    LOG "Hi!"
+    LOG `anvi-interactive -v`
+
+}
+
+C() {
+    echo -e "\033[0;30m\033[46m$1\033[0m"
+}
+
+INFO() {
+    echo
+    C "#"
+    C "#"
+    C "# $1"
+    C "#"
+    C "#"
+    echo
+}
+
+
+WAIT () {
+    python /workspace/meren/wait_for_cluster.py $1
+}
+
+CHECK_FILE () {
+    if [ -s $1 ]
+    then
+        :
+    else
+        echo "Error: Expected to find $1, but it is not there!"
+        exit 1
+    fi
+}
+
+INIT_DIR () {
+        rm -rf $1
+        mkdir $1
+        INFO $1
+}
+
+LOOP_OVER_SAMPLES () {
+        # Loop over samples
+        # $1; command to be evaluated
+        # $2; wait_for_cluster keyword
+
+    # run the command
+    for sample in `cat samples.txt`
+    do
+       eval $1
+    done
+
+    # wait for the cluster to be done
+    if [ -z $2 ]
+    then
+        continue
+    else
+        /groups/merenlab/00_RESOURCES/wait_for_cluster.py $2
+    fi
+
+}
+
+GEN_CONTIGS_DB () {
+        DIR="02_CONTIGS"
+        INIT_DIR $DIR
+        LOG=00_LOGS/$job\_GEN_CONTIGS.log
+        LOOP_OVER_SAMPLES 'clusterize anvi-script-reformat-fasta $FASTA_DIR/$sample\.fna -o $FASTA_DIR/$sample\-fixed.fa -l 0 --simplify-names' 'anvi-script-reformat-fasta'
+        LOOP_OVER_SAMPLES 'mv $FASTA_DIR/$sample\-fixed.fa $FASTA_DIR/$sample\.fna'
+        LOOP_OVER_SAMPLES 'clusterize -log $LOG anvi-gen-contigs-database -f $FASTA_DIR/$sample\.fna -o $DIR/$sample\.db --split-length -1' 'anvi-gen-contigs-database'
+        LOOP_OVER_SAMPLES 'clusterize anvi-run-hmms -c $DIR/$sample\.db' 'anvi-run-hmms'
+        for sample in `cat samples.txt`; do CHECK_FILE $DIR/$sample\.db; done
+}
+
+GEN_EXTERNAL_GENOMES_FILE () {
+        external_genome_file=$1
+        rm -rf $external_genome_file
+        echo -e "name\tcontigs_db_path" > $external_genome_file
+        for sample in `cat samples.txt`;do
+                sample_name=`echo ${sample%_genomic*}`
+                echo -e $sample_name"\t"02_CONTIGS/$sample\.db >> $external_genome_file
+        done
+        CHECK_FILE $external_genome_file
+}
+
+DO_PAN_GENOME () {
+        DIR="."
+        #INIT_DIR $DIR
+        external_genome_file=$DIR/$job\_external_genomes.txt
+        GEN_EXTERNAL_GENOMES_FILE $external_genome_file
+        LOG=00_LOGS/$job\_DO_PAN_GENOME.log
+        clusterize -n 20 -log $LOG anvi-pan-genome --external $external_genome_file -o $DIR/$job\_PAN_OUT --num-threads 20 --use-ncbi-blast
+        WAIT anvi-pan-genome
+        CHECK_FILE $DIR/$job\_PAN_OUT
+}
+
+# INIT
+DO_INIT
+
+# Generate contigs db for each sample
+GEN_CONTIGS_DB
+
+# Do the pangenome analysis
+DO_PAN_GENOME
+
+LOG "All done!"
+

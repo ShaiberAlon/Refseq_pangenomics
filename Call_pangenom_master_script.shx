@@ -1,0 +1,32 @@
+#!/bin/bash
+# This script is for doing a pangenome of some species in Refseq
+# the input is the name of the species (or genus) and it is used to grep the relevant lines from the assembly_summary_refseq.txt file
+# it is better to first check that this grep gives the expected result
+
+
+set -e
+
+genus=$1
+if [ -s $2 ]; then
+    Project=$genus
+    grep_expression=$genus
+else
+    species=$2
+    Project=$genus\_$species
+    grep_expression="$genus $species"
+fi  
+
+refseq_summary="~/github/Bfrag_pangenomics/assembly_summary_refseq.txt"
+Project_summary_refseq="$Project\_summary_refseq.txt"
+sed '2!d' $refseq_summary > $Project_summary_refseq
+grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
+Project_FTP=$Project\_FTP.txt
+cut -f 20 $Project_summary_refseq > $Project_FTP
+
+#for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA ;done
+#python /workspace/meren/wait_for_cluster.py wget
+
+#for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
+python /workspace/meren/wait_for_cluster.py gunzip
+for file in `tail -n +2 $Project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
+bash Alons_pangenome_master_script.shx $Project alon.shaiber@gmail.com
