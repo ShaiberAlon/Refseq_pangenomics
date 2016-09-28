@@ -1,0 +1,55 @@
+#!/bin/bash
+# This script is for doing a pangenome of some species in Refseq
+# the input is the name of the species (or genus) and it is used to grep the relevant lines from the assembly_summary_refseq.txt file
+# it is better to first check that this grep gives the expected result
+
+
+set -e
+
+# Number of random samples from Refseq
+N_random_samples=50
+
+Create_lists_for_species () {
+    genus=$1
+    if [ -s $2 ]; then
+        Project=$genus
+        grep_expression=$genus
+    else
+        species=$2
+        Project=$genus\_$species
+        grep_expression="$genus $species"
+    fi  
+    refseq_summary="~/github/Bfrag_pangenomics/assembly_summary_refseq.txt"
+    Project_summary_refseq="$Project\_summary_refseq.txt"
+    sed '2!d' $refseq_summary > $Project_summary_refseq
+    grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
+    Project_FTP=$Project\_FTP.txt
+    cut -f 20 $Project_summary_refseq | tail -n +2 > $Project_FTP
+}
+
+Call_master_script () {
+    if [ -s $1 ]; then
+        # this is for the case of supplying a shortened list of randomly selected files
+        Project_FTP=$1
+    fi
+    # creating the sample.txt file
+    for file in `tail -n +2 $Project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
+    # downloading the files using wget
+    for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA ;done
+    python /workspace/meren/wait_for_cluster.py wget
+    # extracting compressed files
+    for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
+    python /workspace/meren/wait_for_cluster.py gunzip
+    # calling the master script
+    bash Alons_pangenome_master_script.shx $Project alon.shaiber@gmail.com
+}
+
+Create_random_list () {
+    perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < $Project_FTP.txt | head -n $N_random_samples > $Project\_random_FTP.txt
+}
+
+while read genus species;do
+    Create_lists_for_species $genus $species
+    Create_random_list
+    Call_master_script $Project\_random_FTP.txt
+done < list_of_species.txt
