@@ -21,7 +21,7 @@ Project_summary_refseq="$Project\_summary_refseq.txt"
 sed '2!d' $refseq_summary > $Project_summary_refseq
 grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
 Project_FTP=$Project\_FTP.txt
-cut -f 20 $Project_summary_refseq > $Project_FTP
+cut -f 20 $Project_summary_refseq | tail -n +2 > $Project_FTP
 
 #for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA ;done
 #python /workspace/meren/wait_for_cluster.py wget
