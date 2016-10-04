@@ -1,4 +1,4 @@
-# Bfrag_pangenomics
+# Refseq_pangenomics
 Using assembly_summary_refseq.txt from
 
   `ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt`
