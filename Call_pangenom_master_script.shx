@@ -23,7 +23,7 @@ grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
 Project_FTP=$Project\_FTP.txt
 cut -f 20 $Project_summary_refseq | tail -n +2 > $Project_FTP
 
-#for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA ;done
+#for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
 #python /workspace/meren/wait_for_cluster.py wget
 
 #for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
