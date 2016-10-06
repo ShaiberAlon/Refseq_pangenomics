@@ -16,17 +16,22 @@ else
     grep_expression="$genus $species"
 fi  
 
-refseq_summary="~/github/Bfrag_pangenomics/assembly_summary_refseq.txt"
-Project_summary_refseq="$Project\_summary_refseq.txt"
+refseq_summary="assembly_summary_refseq.txt"
+Project_summary_refseq=$Project\_summary_refseq.txt
 sed '2!d' $refseq_summary > $Project_summary_refseq
 grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
 Project_FTP=$Project\_FTP.txt
 cut -f 20 $Project_summary_refseq | tail -n +2 > $Project_FTP
 
-#for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
-#python /workspace/meren/wait_for_cluster.py wget
+rm -rf 01_FASTA
+mkdir 01_FASTA
+for file in `cat $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
+python /workspace/meren/wait_for_cluster.py wget
 
-#for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
+for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
 python /workspace/meren/wait_for_cluster.py gunzip
+rm -rf samples.txt
 for file in `tail -n +2 $Project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
-bash Alons_pangenome_master_script.shx $Project alon.shaiber@gmail.com
+N_genomes=`cat samples.txt | wc -l`
+echo Strating Pangenomic analysis for $N_genomes genomes of $grep_expression from Refseq
+bash Pangenome_master_script.shx $Project alon.shaiber@gmail.com
