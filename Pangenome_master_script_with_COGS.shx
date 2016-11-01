@@ -1,0 +1,169 @@
+#!/bin/bash
+
+# expects input of samples.txt file
+# generate contigs.db for each fasta file
+
+# setting the pipeline to stop in case a command returns a non-zero status
+set -e
+
+project=$1
+email=$2
+
+FASTA_DIR="01_FASTA"
+
+NUM_THREADS_FOR_COGS=20
+NUM_THREADS_FOR_GEN_GENOME_STORAGE=8
+NUM_THREADS_FOR_PAN=20
+
+if [ ! -f "samples.txt"  ]
+then
+    echo "
+        You must have a samples.txt in this directory. The format of the
+        samples.txt is identical to the input file of iu-gen-configs. For
+        details, see iu-gen-congigs -h
+        "
+    exit 1
+fi
+
+LOG () {
+    msg="[`date`] $1"
+    echo $msg >> $project-log.txt
+    echo $msg | mail -s "Update on $project" $email
+}
+
+DO_INIT() {
+    rm -rf 00_LOGS
+    mkdir 00_LOGS
+
+    LOG "Hi!"
+    LOG `anvi-interactive -v`
+
+}
+
+C() {
+    echo -e "\033[0;30m\033[46m$1\033[0m"
+}
+
+INFO() {
+    echo
+    C "#"
+    C "#"
+    C "# $1"
+    C "#"
+    C "#"
+    echo
+}
+
+
+WAIT () {
+    python /workspace/meren/wait_for_cluster.py $1
+}
+
+CHECK_FILE () {
+    if [ -s $1 ]
+    then
+        :
+    else
+        echo "Error: Expected to find $1, but it is not there!"
+        exit 1
+    fi
+}
+
+INIT_DIR () {
+        rm -rf $1
+        mkdir $1
+        INFO $1
+}
+
+LOOP_OVER_SAMPLES () {
+        # Loop over samples
+        # $1; command to be evaluated
+        # $2; wait_for_cluster keyword
+
+    # run the command
+    for sample in `cat samples.txt`
+    do
+       eval $1
+    done
+
+    # wait for the cluster to be done
+    if [ -z $2 ]
+    then
+        continue
+    else
+        /groups/merenlab/00_RESOURCES/wait_for_cluster.py $2
+    fi
+
+}
+
+GEN_CONTIGS_DB () {
+        DIR="02_CONTIGS"
+        INIT_DIR $DIR
+        LOG=00_LOGS/$project\_GEN_CONTIGS.log
+        LOOP_OVER_SAMPLES 'clusterize anvi-script-reformat-fasta $FASTA_DIR/$sample\.fna -o $FASTA_DIR/$sample\-fixed.fa -l 0 --simplify-names' 'anvi-script-reformat-fasta'
+        LOOP_OVER_SAMPLES 'mv $FASTA_DIR/$sample\-fixed.fa $FASTA_DIR/$sample\.fna'
+        LOOP_OVER_SAMPLES 'clusterize -log $LOG anvi-gen-contigs-database -f $FASTA_DIR/$sample\.fna -o $DIR/$sample\.db --split-length -1' 'anvi-gen-contigs-database'
+        LOOP_OVER_SAMPLES 'clusterize anvi-run-hmms -c $DIR/$sample\.db' 'anvi-run-hmms'
+        for sample in `cat samples.txt`; do CHECK_FILE $DIR/$sample\.db; done
+}
+
+RUN_COGs () {
+	DIR="02_CONTIGS"
+	LOOP_OVER_SAMPLES 'clusterize -n $NUM_THREADS_FOR_COGS -log 00_LOGS/$sample-cogs.log anvi-run-ncbi-cogs -c $DIR/$sample.db --num-threads $NUM_THREADS_FOR_COGS' 'anvi-run-ncbi-cogs'
+	for sample in `cat samples.txt`; do CHECK_FILE $DIR/$sample.db; done
+	LOG "COGs for $project on `hostname` is done running."
+}
+
+GEN_GENOMES_STORAGE () {
+	DIR="04_GENOMES_STORAGE"
+	INIT_DIR $DIR
+	CHECK_FILE 03_CONTIGS/external-genomes.txt
+
+	clusterize -n $NUM_THREADS_FOR_GEN_GENOME_STORAGE -log 00_LOGS/anvi-gen-genomes-storage.txt anvi-gen-genomes-storage -e 02_CONTIGS/external-genomes.txt -o $DIR/$project-GENOMES.h5
+	WAIT anvi-gen-genomes-storage
+
+	LOG "Genomes storage for $project on `hostname` is ready."
+}
+
+
+
+GEN_EXTERNAL_GENOMES_FILE () {
+	DIR="02_CONTIGS"
+        external_genome_file=$DIR/$project\_external_genomes.txt
+        rm -rf $external_genome_file
+        echo -e "name\tcontigs_db_path" > $external_genome_file
+        for sample in `cat samples.txt`;do
+                sample_name=`echo ${sample%_genomic*}`
+                echo -e $sample_name"\t"02_CONTIGS/$sample\.db >> $external_genome_file
+        done
+        CHECK_FILE $external_genome_file
+}
+
+DO_PAN_GENOME () {
+        DIR="05_PAN"
+        INIT_DIR $DIR
+	CHECK_FILE 04_GENOMES_STORAGE/$project-GENOMES.h5
+        LOG=00_LOGS/$project\_DO_PAN_GENOME.log
+        clusterize -n $NUM_THREADS_FOR_PAN -log $LOG anvi-pan-genome -J $project -g 04_GENOMES_STORAGE/$project-GENOMES.h5 -o $DIR/$project\_PAN_OUT --num-threads $NUM_THREADS_FOR_PAN --use-ncbi-blast
+        WAIT anvi-pan-genome
+        CHECK_FILE $DIR/$project\_PAN_OUT
+	LOG "Pan genome analysis for $project on `hostname` is done. To vizualize use: anvi-display-pan -g 04_GENOMES_STORAGE/$project-GENOMES.h5 -p $DIR/$project\_PAN_OUT/$project-PAN.db -s $DIR/$project\_PAN_OUT/$project-SAMPLES.db"
+}
+
+# INIT
+DO_INIT
+
+# Generate contigs db for each sample
+GEN_CONTIGS_DB
+
+GEN_EXTERNAL_GENOMES_FILE
+
+RUN_COGs                                                                                                                                                                            
+
+GEN_GENOMES_STORAGE
+
+# Do the pangenome analysis
+DO_PAN_GENOME
+
+LOG "All done!"
+
