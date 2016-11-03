@@ -117,9 +117,10 @@ RUN_COGs () {
 GEN_GENOMES_STORAGE () {
 	DIR="04_GENOMES_STORAGE"
 	INIT_DIR $DIR
-	CHECK_FILE 03_CONTIGS/external-genomes.txt
+	external_genome_file=02_CONTIGS/$project\_external_genomes.txt
+	CHECK_FILE $external_genome_file
 
-	clusterize -n $NUM_THREADS_FOR_GEN_GENOME_STORAGE -log 00_LOGS/anvi-gen-genomes-storage.txt anvi-gen-genomes-storage -e 02_CONTIGS/external-genomes.txt -o $DIR/$project-GENOMES.h5
+	clusterize -n $NUM_THREADS_FOR_GEN_GENOME_STORAGE -log 00_LOGS/anvi-gen-genomes-storage.txt anvi-gen-genomes-storage -e $external_genome_file -o $DIR/$project-GENOMES.h5
 	WAIT anvi-gen-genomes-storage
 
 	LOG "Genomes storage for $project on `hostname` is ready."
@@ -132,16 +133,19 @@ GEN_EXTERNAL_GENOMES_FILE () {
         external_genome_file=$DIR/$project\_external_genomes.txt
         rm -rf $external_genome_file
         echo -e "name\tcontigs_db_path" > $external_genome_file
+	number=1
         for sample in `cat samples.txt`;do
-                sample_name=`echo ${sample%_genomic*}`
-                echo -e $sample_name"\t"02_CONTIGS/$sample\.db >> $external_genome_file
+                sample_name=$project\_$number
+                echo -e $sample_name"\t"$sample\.db >> $external_genome_file
+		number=$((number+1))
         done
         CHECK_FILE $external_genome_file
 }
 
 DO_PAN_GENOME () {
         DIR="05_PAN"
-        INIT_DIR $DIR
+	rm -rf $DIR/$project\_PAN_OUT
+        mkdir -p $DIR/$project\_PAN_OUT
 	CHECK_FILE 04_GENOMES_STORAGE/$project-GENOMES.h5
         LOG=00_LOGS/$project\_DO_PAN_GENOME.log
         clusterize -n $NUM_THREADS_FOR_PAN -log $LOG anvi-pan-genome -J $project -g 04_GENOMES_STORAGE/$project-GENOMES.h5 -o $DIR/$project\_PAN_OUT --num-threads $NUM_THREADS_FOR_PAN --use-ncbi-blast
@@ -151,14 +155,14 @@ DO_PAN_GENOME () {
 }
 
 # INIT
-DO_INIT
+#DO_INIT
 
 # Generate contigs db for each sample
-GEN_CONTIGS_DB
+#GEN_CONTIGS_DB
 
 GEN_EXTERNAL_GENOMES_FILE
 
-RUN_COGs                                                                                                                                                                            
+#RUN_COGs                                                                                                                                                                            
 
 GEN_GENOMES_STORAGE
 
