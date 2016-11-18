@@ -7,7 +7,7 @@
 set -e
 
 # Number of random samples from Refseq
-N_random_samples=50
+N_random_samples=10
 
 Create_lists_for_species () {
     genus=$1
@@ -19,7 +19,7 @@ Create_lists_for_species () {
         Project=$genus\_$species
         grep_expression="$genus $species"
     fi  
-    refseq_summary="~/github/Bfrag_pangenomics/assembly_summary_refseq.txt"
+    refseq_summary="assembly_summary_refseq.txt"
     Project_summary_refseq="$Project\_summary_refseq.txt"
     sed '2!d' $refseq_summary > $Project_summary_refseq
     grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
@@ -49,6 +49,7 @@ Create_random_list () {
 }
 
 while read genus species;do
+    if [ "$genus" == "genus" ]; then continue; fi
     Create_lists_for_species $genus $species
     Create_random_list
     Call_master_script $Project\_random_FTP.txt
