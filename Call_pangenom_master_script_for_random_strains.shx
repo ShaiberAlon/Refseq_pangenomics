@@ -2,12 +2,16 @@
 # This script is for doing a pangenome of some species in Refseq
 # the input is the name of the species (or genus) and it is used to grep the relevant lines from the assembly_summary_refseq.txt file
 # it is better to first check that this grep gives the expected result
+# it requires a file called list_of_species.txt and hass the following form:
+# genus         species
+# Bacteroides   fragilis
+# Salmonella    enterica
 
 
 set -e
 
 # Number of random samples from Refseq
-N_random_samples=10
+N_random_samples=6
 
 Create_lists_for_species () {
     genus=$1
@@ -33,7 +37,10 @@ Call_master_script () {
         Project_FTP=$1
     fi
     # creating the sample.txt file
+    rm -rf samples.txt
     for file in `tail -n +2 $Project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
+    # Save a copy of the samples.txt file with the project name
+    cp samples.txt $project\-samples.txt
     # downloading the files using wget
     for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA ;done
     python /workspace/meren/wait_for_cluster.py wget
@@ -41,7 +48,7 @@ Call_master_script () {
     for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
     python /workspace/meren/wait_for_cluster.py gunzip
     # calling the master script
-    bash Alons_pangenome_master_script.shx $Project alon.shaiber@gmail.com
+    bash Pangenome_master_script_with_COGS.shx $Project alon.shaiber@gmail.com
 }
 
 Create_random_list () {
