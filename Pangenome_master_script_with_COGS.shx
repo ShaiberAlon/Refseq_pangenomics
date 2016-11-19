@@ -32,8 +32,9 @@ LOG () {
 }
 
 DO_INIT() {
-    rm -rf 00_LOGS
-    mkdir 00_LOGS
+    LOGS_DIR=00_LOGS/$project
+    rm -rf $LOGS_DIR
+    mkdir -p $LOGS_DIR
 
     LOG "Hi!"
     LOG `anvi-interactive -v`
@@ -99,7 +100,7 @@ LOOP_OVER_SAMPLES () {
 GEN_CONTIGS_DB () {
         DIR="02_CONTIGS"
         INIT_DIR $DIR
-        LOG=00_LOGS/$project\_GEN_CONTIGS.log
+        LOG=$LOGS_DIR/$project\_GEN_CONTIGS.log
         LOOP_OVER_SAMPLES 'clusterize anvi-script-reformat-fasta $FASTA_DIR/$sample\.fna -o $FASTA_DIR/$sample\-fixed.fa -l 0 --simplify-names' 'anvi-script-reformat-fasta'
         LOOP_OVER_SAMPLES 'mv $FASTA_DIR/$sample\-fixed.fa $FASTA_DIR/$sample\.fna'
         LOOP_OVER_SAMPLES 'clusterize -log $LOG anvi-gen-contigs-database -f $FASTA_DIR/$sample\.fna -o $DIR/$sample\.db --split-length -1' 'anvi-gen-contigs-database'
@@ -109,7 +110,7 @@ GEN_CONTIGS_DB () {
 
 RUN_COGs () {
 	DIR="02_CONTIGS"
-	LOOP_OVER_SAMPLES 'clusterize -n $NUM_THREADS_FOR_COGS -log 00_LOGS/$sample-cogs.log anvi-run-ncbi-cogs -c $DIR/$sample.db --num-threads $NUM_THREADS_FOR_COGS' 'anvi-run-ncbi-cogs'
+	LOOP_OVER_SAMPLES 'clusterize -n $NUM_THREADS_FOR_COGS -log $LOGS_DIR/$sample-cogs.log anvi-run-ncbi-cogs -c $DIR/$sample.db --num-threads $NUM_THREADS_FOR_COGS' 'anvi-run-ncbi-cogs'
 	for sample in `cat samples.txt`; do CHECK_FILE $DIR/$sample.db; done
 	LOG "COGs for $project on `hostname` is done running."
 }
@@ -120,7 +121,7 @@ GEN_GENOMES_STORAGE () {
 	external_genome_file=02_CONTIGS/$project\_external_genomes.txt
 	CHECK_FILE $external_genome_file
 
-	clusterize -n $NUM_THREADS_FOR_GEN_GENOME_STORAGE -log 00_LOGS/anvi-gen-genomes-storage.txt anvi-gen-genomes-storage -e $external_genome_file -o $DIR/$project-GENOMES.h5
+	clusterize -n $NUM_THREADS_FOR_GEN_GENOME_STORAGE -log $LOGS_DIR/anvi-gen-genomes-storage.txt anvi-gen-genomes-storage -e $external_genome_file -o $DIR/$project-GENOMES.h5
 	WAIT anvi-gen-genomes-storage
 
 	LOG "Genomes storage for $project on `hostname` is ready."
@@ -147,7 +148,7 @@ DO_PAN_GENOME () {
 	rm -rf $DIR/$project\_PAN_OUT
         mkdir -p $DIR/$project\_PAN_OUT
 	CHECK_FILE 04_GENOMES_STORAGE/$project-GENOMES.h5
-        LOG=00_LOGS/$project\_DO_PAN_GENOME.log
+        LOG=$LOGS_DIR/$project\_DO_PAN_GENOME.log
         clusterize -n $NUM_THREADS_FOR_PAN -log $LOG anvi-pan-genome -J $project -g 04_GENOMES_STORAGE/$project-GENOMES.h5 -o $DIR/$project\_PAN_OUT --num-threads $NUM_THREADS_FOR_PAN --use-ncbi-blast
         WAIT anvi-pan-genome
         CHECK_FILE $DIR/$project\_PAN_OUT
