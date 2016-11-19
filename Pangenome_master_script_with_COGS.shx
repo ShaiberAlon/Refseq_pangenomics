@@ -72,7 +72,7 @@ CHECK_FILE () {
 
 INIT_DIR () {
         rm -rf $1
-        mkdir $1
+        mkdir -p $1
         INFO $1
 }
 
@@ -98,7 +98,7 @@ LOOP_OVER_SAMPLES () {
 }
 
 GEN_CONTIGS_DB () {
-        DIR="02_CONTIGS"
+        DIR="02_CONTIGS/$project"
         INIT_DIR $DIR
         LOG=$LOGS_DIR/$project\_GEN_CONTIGS.log
         LOOP_OVER_SAMPLES 'clusterize anvi-script-reformat-fasta $FASTA_DIR/$sample\.fna -o $FASTA_DIR/$sample\-fixed.fa -l 0 --simplify-names' 'anvi-script-reformat-fasta'
@@ -109,16 +109,16 @@ GEN_CONTIGS_DB () {
 }
 
 RUN_COGs () {
-	DIR="02_CONTIGS"
+	DIR="02_CONTIGS/$project"
 	LOOP_OVER_SAMPLES 'clusterize -n $NUM_THREADS_FOR_COGS -log $LOGS_DIR/$sample-cogs.log anvi-run-ncbi-cogs -c $DIR/$sample.db --num-threads $NUM_THREADS_FOR_COGS' 'anvi-run-ncbi-cogs'
 	for sample in `cat samples.txt`; do CHECK_FILE $DIR/$sample.db; done
 	LOG "COGs for $project on `hostname` is done running."
 }
 
 GEN_GENOMES_STORAGE () {
-	DIR="04_GENOMES_STORAGE"
+	DIR="04_GENOMES_STORAGE/$project"
 	INIT_DIR $DIR
-	external_genome_file=02_CONTIGS/$project\_external_genomes.txt
+	external_genome_file=02_CONTIGS/$project/$project\_external_genomes.txt
 	CHECK_FILE $external_genome_file
 
 	clusterize -n $NUM_THREADS_FOR_GEN_GENOME_STORAGE -log $LOGS_DIR/anvi-gen-genomes-storage.txt anvi-gen-genomes-storage -e $external_genome_file -o $DIR/$project-GENOMES.h5
@@ -130,7 +130,7 @@ GEN_GENOMES_STORAGE () {
 
 
 GEN_EXTERNAL_GENOMES_FILE () {
-	DIR="02_CONTIGS"
+	DIR="02_CONTIGS/$project"
         external_genome_file=$DIR/$project\_external_genomes.txt
         rm -rf $external_genome_file
         echo -e "name\tcontigs_db_path" > $external_genome_file
@@ -147,19 +147,19 @@ DO_PAN_GENOME () {
         DIR="05_PAN"
 	rm -rf $DIR/$project\_PAN_OUT
         mkdir -p $DIR/$project\_PAN_OUT
-	CHECK_FILE 04_GENOMES_STORAGE/$project-GENOMES.h5
+	CHECK_FILE 04_GENOMES_STORAGE/$project/$project-GENOMES.h5
         LOG=$LOGS_DIR/$project\_DO_PAN_GENOME.log
-        clusterize -n $NUM_THREADS_FOR_PAN -log $LOG anvi-pan-genome -J $project -g 04_GENOMES_STORAGE/$project-GENOMES.h5 -o $DIR/$project\_PAN_OUT --num-threads $NUM_THREADS_FOR_PAN --use-ncbi-blast
+        clusterize -n $NUM_THREADS_FOR_PAN -log $LOG anvi-pan-genome -J $project -g 04_GENOMES_STORAGE/$project/$project-GENOMES.h5 -o $DIR/$project\_PAN_OUT --num-threads $NUM_THREADS_FOR_PAN --use-ncbi-blast
         WAIT anvi-pan-genome
         CHECK_FILE $DIR/$project\_PAN_OUT
-	LOG "Pan genome analysis for $project on `hostname` is done. To vizualize use: anvi-display-pan -g 04_GENOMES_STORAGE/$project-GENOMES.h5 -p $DIR/$project\_PAN_OUT/$project-PAN.db -s $DIR/$project\_PAN_OUT/$project-SAMPLES.db"
+	LOG "Pan genome analysis for $project on `hostname` is done. To vizualize use: anvi-display-pan -g 04_GENOMES_STORAGE/$project/$project-GENOMES.h5 -p $DIR/$project\_PAN_OUT/$project-PAN.db -s $DIR/$project\_PAN_OUT/$project-SAMPLES.db"
 }
 
 # INIT
-#DO_INIT
+DO_INIT
 
 # Generate contigs db for each sample
-#GEN_CONTIGS_DB
+GEN_CONTIGS_DB
 
 GEN_EXTERNAL_GENOMES_FILE
 
