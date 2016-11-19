@@ -16,48 +16,48 @@ N_random_samples=6
 Create_lists_for_species () {
     genus=$1
     if [ -s $2 ]; then
-        Project=$genus
+        project=$genus
         grep_expression=$genus
     else
         species=$2
-        Project=$genus\_$species
+        project=$genus\_$species
         grep_expression="$genus $species"
     fi  
     refseq_summary="assembly_summary_refseq.txt"
-    Project_summary_refseq="$Project\_summary_refseq.txt"
-    sed '2!d' $refseq_summary > $Project_summary_refseq
-    grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
-    Project_FTP=$Project\_FTP.txt
-    cut -f 20 $Project_summary_refseq | tail -n +2 > $Project_FTP
+    project_summary_refseq="$project\_summary_refseq.txt"
+    sed '2!d' $refseq_summary > $project_summary_refseq
+    grep "$grep_expression" $refseq_summary >> $project_summary_refseq
+    project_FTP=$project\_FTP.txt
+    cut -f 20 $project_summary_refseq | tail -n +2 > $project_FTP
 }
 
 Call_master_script () {
     if [ -s $1 ]; then
         # this is for the case of supplying a shortened list of randomly selected files
-        Project_FTP=$1
+        project_FTP=$1
     fi
     # creating the sample.txt file
     rm -rf samples.txt
-    for file in `tail -n +2 $Project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
+    for file in `tail -n +2 $project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
     # Save a copy of the samples.txt file with the project name
     cp samples.txt $project\-samples.txt
     # downloading the files using wget
-    for file in `tail -n +2 $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA ;done
+    for file in `tail -n +2 $project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA ;done
     python /workspace/meren/wait_for_cluster.py wget
     # extracting compressed files
     for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
     python /workspace/meren/wait_for_cluster.py gunzip
     # calling the master script
-    bash Pangenome_master_script_with_COGS.shx $Project alon.shaiber@gmail.com
+    bash Pangenome_master_script_with_COGS.shx $project alon.shaiber@gmail.com
 }
 
 Create_random_list () {
-    perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < $Project_FTP.txt | head -n $N_random_samples > $Project\_random_FTP.txt
+    perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < $project_FTP | head -n $N_random_samples > $project\_random_FTP.txt
 }
 
 while read genus species;do
     if [ "$genus" == "genus" ]; then continue; fi
     Create_lists_for_species $genus $species
     Create_random_list
-    Call_master_script $Project\_random_FTP.txt
+    Call_master_script $project\_random_FTP.txt
 done < list_of_species.txt
