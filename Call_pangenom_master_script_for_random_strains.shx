@@ -30,10 +30,11 @@ Create_lists_for_species () {
     project_FTP=$project\_FTP.txt
     cut -f 20 $project_summary_refseq | tail -n +2 > $project_FTP
 }
-MD5_CHECK () {
+#MD5_CHECK () {
     # create md5checksums for all the files
-    #for file in `tail -n +2 $project_FTP`; do grep 
-}
+    #for file in `cat $project_FTP`; do grep 
+#}
+
 Call_master_script () {
     if [ -s $1 ]; then
         # this is for the case of supplying a shortened list of randomly selected files
@@ -41,13 +42,13 @@ Call_master_script () {
     fi
     # creating the sample.txt file
     rm -rf samples.txt
-    for file in `tail -n +2 $project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
+    for file in `cat $project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
     # Save a copy of the samples.txt file with the project name
     cp samples.txt $project\-samples.txt
     # downloading the files using wget
-    for file in `tail -n +2 $project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
+    for file in `cat $project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
     # download the md5checksums.txt for each file
-    for file in `tail -n +2 $project_FTP `; do clusterize wget $file/md5checksums.txt -O 01_FASTA/${sample}_md5 ;done
+    for file in `cat $project_FTP `; do clusterize wget $file/md5checksums.txt -O 01_FASTA/${sample}_md5 ;done
     python /workspace/meren/wait_for_cluster.py wget
     # extracting compressed files
     for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
