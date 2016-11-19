@@ -24,7 +24,7 @@ Create_lists_for_species () {
         grep_expression="$genus $species"
     fi  
     refseq_summary="assembly_summary_refseq.txt"
-    project_summary_refseq="$project\_summary_refseq.txt"
+    project_summary_refseq="${project}_summary_refseq.txt"
     sed '2!d' $refseq_summary > $project_summary_refseq
     grep "$grep_expression" $refseq_summary >> $project_summary_refseq
     project_FTP=$project\_FTP.txt
