@@ -161,10 +161,13 @@ DO_INIT
 # Generate contigs db for each sample
 GEN_CONTIGS_DB
 
+# Generate External Genomes File
 GEN_EXTERNAL_GENOMES_FILE
 
-#RUN_COGs                                                                                                                                                                            
+#Run NCBI COGS annotation for the contigs db
+RUN_COGs
 
+#Generate Genomes Storage for the Pnagenome
 GEN_GENOMES_STORAGE
 
 # Do the pangenome analysis
