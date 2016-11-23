@@ -49,7 +49,7 @@ Call_master_script () {
     mkdir -p 01_FASTA
     for file in `cat $project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
     # download the md5checksums.txt for each file
-    for file in `cat $project_FTP `; do wget $file/md5checksums.txt -O 01_FASTA/${file}_md5 ;done
+    for file in `cat $project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; wget $file/md5checksums.txt -O 01_FASTA/${sample}_md5 ;done
 
     # extracting compressed files
     for file in `ls 01_FASTA/*.gz`; do gunzip $file 01_FASTA/; done
