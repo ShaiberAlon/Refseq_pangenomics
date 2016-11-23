@@ -1,0 +1,76 @@
+#!/bin/bash
+# This script is for doing a pangenome of some species in Refseq
+# the input is the name of the species (or genus) and it is used to grep the relevant lines from the assembly_summary_refseq.txt file
+# it is better to first check that this grep gives the expected result
+# it requires a file called list_of_species.txt and hass the following form:
+# genus         species
+# Bacteroides   fragilis
+# Salmonella    enterica
+
+
+set -e
+
+# Number of random samples from Refseq
+N_random_samples=6
+
+Create_lists_for_species () {
+    genus=$1
+    if [ -s $2 ]; then
+        project=$genus
+        grep_expression=$genus
+    else
+        species=$2
+        project=$genus\_$species
+        grep_expression="$genus $species"
+    fi  
+    refseq_summary="assembly_summary_refseq.txt"
+    project_summary_refseq="${project}_summary_refseq.txt"
+    sed '2!d' $refseq_summary > $project_summary_refseq
+    grep "$grep_expression" $refseq_summary >> $project_summary_refseq
+    project_FTP=$project\_FTP.txt
+    cut -f 20 $project_summary_refseq | tail -n +2 > $project_FTP
+}
+#MD5_CHECK () {
+    # create md5checksums for all the files
+    #for file in `cat $project_FTP`; do grep 
+#}
+
+Call_master_script () {
+    if [ -s $1 ]; then
+        # this is for the case of supplying a shortened list of randomly selected files
+        project_FTP=$1
+    fi
+    # creating the sample.txt file
+    rm -rf samples.txt
+    for file in `cat $project_FTP`;do echo $file\_genomic | rev | cut -f 1 -d \/ | rev >> samples.txt;done
+    # Save a copy of the samples.txt file with the project name
+    cp samples.txt $project\-samples.txt
+    # downloading the files using wget
+    mkdir -p 01_FASTA
+    for file in `cat $project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
+    # download the md5checksums.txt for each file
+    for file in `cat $project_FTP `; do wget $file/md5checksums.txt -O 01_FASTA/${file}_md5 ;done
+
+    # extracting compressed files
+    for file in `ls 01_FASTA/*.gz`; do gunzip $file 01_FASTA/; done
+
+    # calling the master script
+    bash Pangenome_master_script_with_COGS.shx $project alon.shaiber@gmail.com
+}
+
+Create_random_list () {
+    perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < $project_FTP | head -n $N_random_samples > $project\_random_FTP.txt
+}
+# checking if a file with the list of species was provided
+if [ -s $3 ];then
+    species_list=$3
+else
+    species_list=list_of_species.txt
+fi
+
+while read genus species;do
+    if [ "$genus" == "genus" ]; then continue; fi
+    Create_lists_for_species $genus $species
+    Create_random_list
+    Call_master_script $project\_random_FTP.txt
+done < $species_list
