@@ -46,6 +46,7 @@ Call_master_script () {
     # Save a copy of the samples.txt file with the project name
     cp samples.txt $project\-samples.txt
     # downloading the files using wget
+    mkdir -p 01_FASTA
     for file in `cat $project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
     # download the md5checksums.txt for each file
     for file in `cat $project_FTP `; do clusterize wget $file/md5checksums.txt -O 01_FASTA/${sample}_md5 ;done
@@ -60,10 +61,16 @@ Call_master_script () {
 Create_random_list () {
     perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < $project_FTP | head -n $N_random_samples > $project\_random_FTP.txt
 }
+# checking if a file with the list of species was provided
+if [ -s $3 ];then
+    species_list=$3
+else
+    species_list=list_of_species.txt
+fi
 
 while read genus species;do
     if [ "$genus" == "genus" ]; then continue; fi
     Create_lists_for_species $genus $species
     Create_random_list
     Call_master_script $project\_random_FTP.txt
-done < list_of_species.txt
+done < $species_list
