@@ -152,7 +152,7 @@ DO_PAN_GENOME () {
         clusterize -n $NUM_THREADS_FOR_PAN -log $LOG anvi-pan-genome -J $project -g 04_GENOMES_STORAGE/$project/$project-GENOMES.h5 -o $DIR/$project\_PAN_OUT --num-threads $NUM_THREADS_FOR_PAN --use-ncbi-blast
         WAIT anvi-pan-genome
         CHECK_FILE $DIR/$project\_PAN_OUT
-	LOG "Pan genome analysis for $project on `hostname` is done. To vizualize use: anvi-display-pan -g 04_GENOMES_STORAGE/$project/$project-GENOMES.h5 -p $DIR/$project\_PAN_OUT/$project-PAN.db -s $DIR/$project\_PAN_OUT/$project-SAMPLES.db"
+	LOG "Pan genome analysis for $project on `hostname` is done. To vizualize use: anvi-display-pan -g `pwd`/04_GENOMES_STORAGE/$project/$project-GENOMES.h5 -p `pwd`/$DIR/$project\_PAN_OUT/$project-PAN.db -s `pwd`/$DIR/$project\_PAN_OUT/$project-SAMPLES.db"
 }
 
 # INIT
