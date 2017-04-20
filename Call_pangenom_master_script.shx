@@ -30,7 +30,9 @@ rm -rf $refseq_summary
 
 rm -rf 01_FASTA
 mkdir 01_FASTA
-for file in `cat $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`; clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample\_genomic.fna.gz ;done
+i=1
+echo -e "refseq_name\tsample_name" > $PROJECT-REFSEQ_NAME-SAMPLE_NAME-dict.txt
+for file in `cat $Project_FTP `; do sample=`echo $file | rev | cut -f 1 -d \/ | rev`;sample_name=$PROJECT\_$i;i=$((i+1)); clusterize wget $file/$sample\_genomic.fna.gz -O 01_FASTA/$sample_name.fa.gz ; echo -e "$sample\t$sample_name" >> $PROJECT-REFSEQ_NAME-SAMPLE_NAME-dict.txt;done
 python /workspace/meren/wait_for_cluster.py wget
 
 for file in `ls 01_FASTA/*.gz`; do clusterize gunzip $file 01_FASTA/; done
