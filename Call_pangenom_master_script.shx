@@ -15,13 +15,18 @@ else
     Project=$genus\_$species
     grep_expression="$genus $species"
 fi  
-
+# download the most updated list of genomes
 refseq_summary="assembly_summary_refseq.txt"
+rm -rf $refseq_summary
+wget ftp://ftp.ncbi.nlm.nih.gov/genomes/refseq/assembly_summary_refseq.txt
 Project_summary_refseq=$Project\_summary_refseq.txt
 sed '2!d' $refseq_summary > $Project_summary_refseq
 grep "$grep_expression" $refseq_summary >> $Project_summary_refseq
 Project_FTP=$Project\_FTP.txt
 cut -f 20 $Project_summary_refseq | tail -n +2 > $Project_FTP
+# we don't need the refseq genome list anymore so let's delete it
+rm -rf $refseq_summary
+
 
 rm -rf 01_FASTA
 mkdir 01_FASTA
